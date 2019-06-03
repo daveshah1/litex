@@ -73,8 +73,9 @@ def version(with_time=True):
                 time.time()).strftime("%Y-%m-%d")
 
 
-def mem_decoder(address, start=26, end=29):
-    return lambda a: a[start:end] == ((address >> (start+2)) & (2**(end-start))-1)
+def mem_decoder(start_addr, end_addr):
+    print("%08x %08x" % (start_addr, end_addr))
+    return lambda a: ((a >= ((start_addr>>2) & 0x3fffffff)) & (a <= (((end_addr-1)>>2) & 0x3fffffff)))
 
 
 def get_mem_data(filename_or_regions, endianness="big", mem_size=None):
@@ -434,13 +435,13 @@ class SoCCore(Module):
 
         self._memory_regions.append((name, origin, length))
 
-    def register_mem(self, name, address, interface, size=None):
-        self.add_wb_slave(mem_decoder(address), interface)
+    def register_mem(self, name, address, interface, size=0x10000000):
+        self.add_wb_slave(mem_decoder(address, address + size), interface)
         if size is not None:
             self.add_memory_region(name, address, size)
 
     def register_rom(self, interface, rom_size=0xa000):
-        self.add_wb_slave(mem_decoder(self.soc_mem_map["rom"]), interface)
+        self.add_wb_slave(mem_decoder(self.soc_mem_map["rom"], self.soc_mem_map["rom"] + rom_size), interface)
         self.add_memory_region("rom", self.cpu_reset_address, rom_size)
 
     def get_memory_regions(self):
